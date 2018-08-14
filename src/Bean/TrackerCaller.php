@@ -60,6 +60,7 @@ class TrackerCaller
         return json_encode([
             'Caller'=>$this->callerName,
             'Status'=>$status,
+            'TakeTime'=>$t,
             'StartTime'=>$this->startTime,
             'Args'=>$this->args,
             'EndMsg'=>$this->endMsg
