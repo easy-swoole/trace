@@ -19,13 +19,13 @@ class TrackerCaller
     private $startTime;
     private $endTime;
     private $status = self::STATUS_NOT_END;
-    private $endMsg;
+    private $endArgs;
     private $args;
     private $category;
     private $file;
     private $line;
 
-    final function __construct(string $name,array $args,$category)
+    final function __construct(string $name,$args,$category)
     {
         $trace = debug_backtrace();
         $this->file = $trace[1]['file'];
@@ -36,11 +36,11 @@ class TrackerCaller
         $this->category = $category;
     }
 
-    function endCall(int $status = self::STATUS_SUCCESS,string $msg = null)
+    function endCall(int $status = self::STATUS_SUCCESS,$endArg = null)
     {
         $this->status = $status;
         $this->endTime = microtime(true);
-        $this->endMsg = $msg;
+        $this->endArgs = $endArg;
     }
 
     /**
@@ -78,15 +78,12 @@ class TrackerCaller
     /**
      * @return mixed
      */
-    public function getEndMsg()
+    public function getEndArgs()
     {
-        return $this->endMsg;
+        return $this->endArgs;
     }
 
-    /**
-     * @return array
-     */
-    public function getArgs(): array
+    public function getArgs()
     {
         return $this->args;
     }
@@ -146,7 +143,7 @@ class TrackerCaller
             "line"=>$this->line,
             'startTime'=>$this->startTime,
             'args'=>$this->args,
-            'endMsg'=>$this->endMsg
+            'endArgs'=>$this->endArgs
         ],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
     }
 }

@@ -36,9 +36,6 @@ class Tracker
 
     function addCaller(string $callName,$args,$category = 'default'):TrackerCaller
     {
-        if(!is_array($args)){
-            $args = [$args];
-        }
         $t = new TrackerCaller($callName,$args,$category);
         array_push($this->stack,$t);
         return $t;
