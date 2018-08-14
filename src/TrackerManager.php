@@ -23,6 +23,12 @@ class TrackerManager
         return $this;
     }
 
+    function setTokenGenerator(callable $tokenGenerator):TrackerManager
+    {
+        $this->tokenGenerator = $tokenGenerator;
+        return $this;
+    }
+
     /**
      * @param null $token
      * @throws \Exception
