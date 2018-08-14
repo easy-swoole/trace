@@ -22,9 +22,14 @@ class TrackerCaller
     private $endMsg;
     private $args;
     private $category;
+    private $file;
+    private $line;
 
     final function __construct(string $name,array $args,$category)
     {
+        $trace = debug_backtrace();
+        $this->file = $trace[1]['file'];
+        $this->line = $trace[1]['line'];
         $this->callerName = $name;
         $this->startTime = microtime(true);
         $this->args = $args;
@@ -94,6 +99,22 @@ class TrackerCaller
         return $this->category;
     }
 
+    /**
+     * @return mixed
+     */
+    public function getFile()
+    {
+        return $this->file;
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getLine()
+    {
+        return $this->line;
+    }
+
     function __toString()
     {
         // TODO: Implement __toString() method.
@@ -117,13 +138,15 @@ class TrackerCaller
             $t = -1;
         }
         return json_encode([
-            'Category'=>$this->category,
-            'Caller'=>$this->callerName,
-            'Status'=>$status,
-            'TakeTime'=>$t,
-            'StartTime'=>$this->startTime,
-            'Args'=>$this->args,
-            'EndMsg'=>$this->endMsg
+            'category'=>$this->category,
+            'caller'=>$this->callerName,
+            'status'=>$status,
+            'takeTime'=>$t,
+            'file'=>$this->file,
+            "line"=>$this->line,
+            'startTime'=>$this->startTime,
+            'args'=>$this->args,
+            'endMsg'=>$this->endMsg
         ],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
     }
 }
