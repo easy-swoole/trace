@@ -15,10 +15,14 @@ use EasySwoole\Trace\Logger;
 
 class TriggerHandler implements TriggerInterface
 {
-    private $logger;
-    function __construct()
+    protected $logger;
+
+    function __construct(Logger $logger = null)
     {
-        $this->logger = new Logger();
+        if($logger == null){
+            $logger = new Logger();
+        }
+        $this->logger = $logger;
     }
 
     public function error($msg, Location $location)
@@ -26,7 +30,7 @@ class TriggerHandler implements TriggerInterface
         // TODO: Implement error() method.
         $debug = "Error at file[{$location->getFile()}] line[{$location->getLine()}] message:[{$msg}]";
         $this->logger->console($debug,false);
-        $this->logger->log($debug,false);
+        $this->logger->log($debug,'debugError');
     }
 
     public function throwable(\Throwable $throwable)
@@ -34,6 +38,6 @@ class TriggerHandler implements TriggerInterface
         // TODO: Implement throwable() method.
         $debug = "Exception at file[{$throwable->getFile()}] line[{$throwable->getLine()}] message:[{$throwable->getMessage()}]";
         $this->logger->console($debug,false);
-        $this->logger->log($debug,false);
+        $this->logger->log($debug,'debugException');
     }
 }
