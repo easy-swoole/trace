@@ -40,7 +40,7 @@ class TrackerManager
         if(!isset($this->stack[$token])){
             $this->stack[$token] = new TrackerBean();
         }
-        return $this->stack[$token] = new TrackerBean();
+        return $this->stack[$token];
     }
 
     /**

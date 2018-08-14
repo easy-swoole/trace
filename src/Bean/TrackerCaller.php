@@ -57,7 +57,12 @@ class TrackerCaller
         if($t > 1000000){
             $t = -1;
         }
-        $arg = json_encode($this->args,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
-        return "Caller:{$this->callerName} Status:{$status} StartTime:{$this->startTime} TakeTime:{$t} Args:{$arg} EndMsg:{$this->endMsg}";
+        return json_encode([
+            'Caller'=>$this->callerName,
+            'Status'=>$status,
+            'StartTime'=>$this->startTime,
+            'Args'=>$this->args,
+            'EndMsg'=>$this->endMsg
+        ],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
     }
 }
