@@ -36,8 +36,13 @@ class TriggerHandler implements TriggerInterface
     public function throwable(\Throwable $throwable)
     {
         // TODO: Implement throwable() method.
-        $debug = "Exception at file[{$throwable->getFile()}] line[{$throwable->getLine()}] message:[{$throwable->getMessage()}]";
-        $this->logger->console($debug,false);
-        $this->logger->log($debug,'debugException');
+        $str = self::exceptionSummery($throwable);
+        $this->logger->console($str,false);
+        $this->logger->log($str,'debugException');
+    }
+
+    public static function exceptionSummery(\Throwable $throwable):string
+    {
+        return "Exception at file[{$throwable->getFile()}] line[{$throwable->getLine()}] message:[{$throwable->getMessage()}]";
     }
 }
