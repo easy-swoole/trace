@@ -34,9 +34,12 @@ class Tracker
         return $this->attribute;
     }
 
-    function addCaller(string $callName,...$args):TrackerCaller
+    function addCaller(string $callName,$args,$category = 'default'):TrackerCaller
     {
-        $t = new TrackerCaller($callName,$args);
+        if(!is_array($args)){
+            $args = [$args];
+        }
+        $t = new TrackerCaller($callName,$args,$category);
         array_push($this->stack,$t);
         return $t;
     }
@@ -45,8 +48,32 @@ class Tracker
     {
         // TODO: Implement __toString() method.
         $msg = "Attribute:\n\t".json_encode($this->attribute,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)."\n";
-        $msg .= "Stack:\n";
-        foreach ($this->stack as $item){
+        $msg .= $this->stackToString($this->stack);
+        return $msg;
+    }
+
+
+    function toString($category = null)
+    {
+        if($category){
+            $msg = "Attribute:\n\t".json_encode($this->attribute,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)."\n";
+            $list = [];
+            foreach ($this->stack as $item){
+                if($item->getCategory() == $category){
+                    array_push($list,$item);
+                }
+            }
+            $msg .= $this->stackToString($list);
+            return $msg;
+        }else{
+            return $this->__toString();
+        }
+    }
+
+    private function stackToString(array $stack)
+    {
+        $msg = "Stack:\n";
+        foreach ($stack as $item){
             $msg .= "\t".(string)$item."\n";
         }
         return $msg;

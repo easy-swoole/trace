@@ -20,12 +20,15 @@ class TrackerCaller
     private $endTime;
     private $status = self::STATUS_NOT_END;
     private $endMsg;
+    private $args;
+    private $category;
 
-    final function __construct(string $name,array $args)
+    final function __construct(string $name,array $args,$category)
     {
         $this->callerName = $name;
         $this->startTime = microtime(true);
         $this->args = $args;
+        $this->category = $category;
     }
 
     function endCall(int $status = self::STATUS_SUCCESS,string $msg = null)
@@ -33,6 +36,62 @@ class TrackerCaller
         $this->status = $status;
         $this->endTime = microtime(true);
         $this->endMsg = $msg;
+    }
+
+    /**
+     * @return string
+     */
+    public function getCallerName(): string
+    {
+        return $this->callerName;
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getStartTime()
+    {
+        return $this->startTime;
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getEndTime()
+    {
+        return $this->endTime;
+    }
+
+    /**
+     * @return int
+     */
+    public function getStatus(): int
+    {
+        return $this->status;
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getEndMsg()
+    {
+        return $this->endMsg;
+    }
+
+    /**
+     * @return array
+     */
+    public function getArgs(): array
+    {
+        return $this->args;
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getCategory()
+    {
+        return $this->category;
     }
 
     function __toString()
@@ -58,6 +117,7 @@ class TrackerCaller
             $t = -1;
         }
         return json_encode([
+            'Category'=>$this->category,
             'Caller'=>$this->callerName,
             'Status'=>$status,
             'TakeTime'=>$t,
