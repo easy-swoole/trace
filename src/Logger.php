@@ -13,24 +13,20 @@ use EasySwoole\Trace\AbstractInterface\LoggerWriterInterface;
 
 class Logger
 {
-    use Singleton;
-
     private $loggerWriter;
-    private $defaultDir;
+    private $logDir;
 
-    function __construct()
+    function __construct(string $logDir = null)
     {
-        $this->setLogDir(getcwd());
+        if(empty($logDir)){
+            $logDir = getcwd();
+        }
+        $this->logDir = $logDir;
     }
 
     function setLoggerWriter(LoggerWriterInterface $loggerWriter):void
     {
         $this->loggerWriter = $loggerWriter;
-    }
-
-    function setLogDir($dir)
-    {
-        $this->defaultDir = $dir;
     }
 
     public function log(string $str,$category = 'default'):Logger
@@ -40,7 +36,7 @@ class Logger
         }else{
             $str = date("y-m-d H:i:s").":{$str}\n";
             $filePrefix = $category."_".date('ym');
-            $filePath = $this->defaultDir."/{$filePrefix}.log";
+            $filePath = $this->logDir."/{$filePrefix}.log";
             file_put_contents($filePath,$str,FILE_APPEND|LOCK_EX);
         }
         return $this;

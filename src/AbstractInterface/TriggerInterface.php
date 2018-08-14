@@ -13,6 +13,6 @@ use EasySwoole\Trace\Bean\Location;
 
 interface TriggerInterface
 {
-    public static function error($msg,Location $location);
-    public static function throwable(\Throwable $throwable);
+    public function error($msg,Location $location);
+    public function throwable(\Throwable $throwable);
 }
