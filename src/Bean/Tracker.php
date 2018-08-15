@@ -44,7 +44,10 @@ class Tracker
     function __toString()
     {
         // TODO: Implement __toString() method.
-        $msg = "Attribute:\n\t".json_encode($this->attribute,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)."\n";
+        $msg = "Attribute:\n";
+        foreach ($this->attribute as $key => $value){
+            $msg .= "\t{$key}:{$value}\n";
+        }
         $msg .= $this->stackToString($this->stack);
         return $msg;
     }
