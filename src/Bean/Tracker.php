@@ -20,7 +20,7 @@ class Tracker
      * @param mixed $val
      * @return Tracker
      */
-    function addAttribute($key, $val): Tracker
+    function addAttribute($key, $val = null): Tracker
     {
         if (is_array($key)) {
             if (empty($this->stack)) {
