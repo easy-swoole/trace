@@ -24,9 +24,9 @@ class Tracker
     {
         if (is_array($key)) {
             if (empty($this->stack)) {
-                $this->stack = $key;
+                $this->attribute = $key;
             } elseif (!empty($key)) {
-                $this->stack = array_merge($this->stack, $key);
+                $this->attribute = array_merge($this->attribute, $key);
             }
         } else {
             $this->attribute[$key] = $val;
