@@ -23,7 +23,11 @@ class Tracker
     function addAttribute($key, $val): Tracker
     {
         if (is_array($key)) {
-            $this->stack = array_merge($this->stack, $key);
+            if (empty($this->stack)) {
+                $this->stack = $key;
+            } elseif (!empty($key)) {
+                $this->stack = array_merge($this->stack, $key);
+            }
         } else {
             $this->attribute[$key] = $val;
         }
