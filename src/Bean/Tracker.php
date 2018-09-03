@@ -13,6 +13,17 @@ class Tracker
 {
     private $attribute = [];
     private $stack = [];
+    private $trackerToken;
+
+    function __construct($trackerToken)
+    {
+        $this->trackerToken = $trackerToken;
+    }
+
+    function getTrackerToken()
+    {
+        return $this->trackerToken;
+    }
 
     /**
      * 添加参数
@@ -87,7 +98,7 @@ class Tracker
     function __toString()
     {
         // TODO: Implement __toString() method.
-        $msg = "Attribute:\n";
+        $msg = "TrackerToken:{$this->trackerToken}\nAttribute:\n";
         foreach ($this->attribute as $key => $value) {
             $msg .= "\t{$key}:{$value}\n";
         }

@@ -134,16 +134,16 @@ class TrackerCaller
         if($t > 1000000){
             $t = -1;
         }
-        return json_encode([
-            'category'=>$this->category,
-            'caller'=>$this->callerName,
-            'status'=>$status,
-            'takeTime'=>$t,
-            'file'=>$this->file,
-            "line"=>$this->line,
-            'startTime'=>$this->startTime,
-            'args'=>$this->args,
-            'endArgs'=>$this->endArgs
-        ],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+        return
+"#:
+\tcallerName:{$this->callerName}
+\tcategory:{$this->category}
+\tstatus:{$status}
+\tstartTime:{$this->startTime}
+\ttakeTime:{$t}
+\tfile:{$this->file}
+\tline:{$this->line}
+\tstartArgs:".json_encode($this->args,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)."
+\tendArgs:".json_encode($this->endArgs,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)."\n";
     }
 }
