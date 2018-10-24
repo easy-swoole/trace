@@ -29,7 +29,7 @@ class Logger
         $this->loggerWriter = $loggerWriter;
     }
 
-    public function log(string $str,$category = 'default'):Logger
+    public function log(string $str,$category = 'default')
     {
         if($this->loggerWriter instanceof LoggerWriterInterface){
             $this->loggerWriter->writeLog($str,$category,time());
@@ -39,7 +39,6 @@ class Logger
             $filePath = $this->logDir."/{$filePrefix}.log";
             file_put_contents($filePath,$str,FILE_APPEND|LOCK_EX);
         }
-        return $this;
     }
 
     public function console(string $str,$saveLog = 1){
