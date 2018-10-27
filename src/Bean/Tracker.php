@@ -12,7 +12,8 @@ namespace EasySwoole\Trace\Bean;
 class Tracker
 {
     private $attribute = [];
-    private $stack = [];
+    private $pointStack = []; //调用点栈
+    private $pointStackMap = [];
     private $trackerToken;
 
     function __construct($trackerToken)
@@ -26,7 +27,7 @@ class Tracker
     }
 
     /**
-     * 添加参数
+     * 设置追踪器标签
      * @param string|array $key
      * @param mixed $val
      * @return Tracker
@@ -34,7 +35,7 @@ class Tracker
     function addAttribute($key, $val = null): Tracker
     {
         if (is_array($key)) {
-            if (empty($this->stack)) {
+            if (empty($this->pointStack)) {
                 $this->attribute = $key;
             } elseif (!empty($key)) {
                 $this->attribute = array_merge($this->attribute, $key);
@@ -46,7 +47,7 @@ class Tracker
     }
 
     /**
-     * 获取参数
+     * 获取追踪器标签
      * @param string $key
      * @return mixed|null
      */
@@ -60,7 +61,7 @@ class Tracker
     }
 
     /**
-     * 获取全部参数
+     * 获取追踪器全部标签
      * @return array
      */
     function getAttributes(): array
@@ -72,23 +73,30 @@ class Tracker
      * 获取调用栈
      * @return array
      */
-    function getStacks(): array
+    function getPointStacks(): array
     {
-        return $this->stack;
+        return $this->pointStack;
     }
 
     /**
-     * 添加跟踪点
-     * @param string $callName
-     * @param mixed $args
-     * @param string $category
-     * @return TrackerCaller
+     * 设置一个调用点
      */
-    function addCaller(string $callName, $args, $category = 'default'): TrackerCaller
+    function setPoint(string $pointName, array $pointArgs = [], $pointCategory = 'default'): TrackerPoint
     {
-        $t = new TrackerCaller($callName, $args, $category);
-        array_push($this->stack, $t);
+        $t = new TrackerPoint($pointName, $pointArgs, $pointCategory);
+        $this->pointStackMap[$pointName] = $t;
+        array_push($this->pointStack, $t);
         return $t;
+    }
+
+    function endPoint(string $pointName,int $status = TrackerPoint::STATUS_SUCCESS,array $endArgs = [])
+    {
+        if(isset($this->pointStackMap[$pointName])){
+            $t = $this->pointStackMap[$pointName];
+            $t->endPoint( $status,$endArgs);
+        }else{
+            throw new \Exception("point : {$pointName} is not exist");
+        }
     }
 
     /**
@@ -102,7 +110,7 @@ class Tracker
         foreach ($this->attribute as $key => $value) {
             $msg .= "\t{$key}:{$value}\n";
         }
-        $msg .= $this->stackToString($this->stack);
+        $msg .= $this->stackToString($this->pointStack);
         return $msg;
     }
 
@@ -116,7 +124,7 @@ class Tracker
         if ($category) {
             $msg = "Attribute:\n\t" . json_encode($this->attribute, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . "\n";
             $list = [];
-            foreach ($this->stack as $item) {
+            foreach ($this->pointStack as $item) {
                 if ($item->getCategory() == $category) {
                     array_push($list, $item);
                 }

@@ -5,6 +5,7 @@
 
 ```php
 
+
 $t = new \EasySwoole\Trace\TrackerManager();
 
 $tracker = $t->getTracker('test');
@@ -13,18 +14,25 @@ $tracker->addAttribute('userName','用户1');
 $tracker->addAttribute('userToken','userToken');
 
 //sql one
-$caller = $tracker->addCaller('查询用户余额','sql statement one');
+$tracker->setPoint('查询用户余额',[
+    'sql'=>'sql statement one'
+]);
 //模拟sql one执行
 //$mode->func();
 usleep(3000);
-$caller->endCall();
+$tracker->endPoint('查询用户余额');
 
 //curl api
-$caller = $tracker->addCaller('消息api查询','请求第三方api');
+$point = $tracker->setPoint('消息api查询',[
+    'curlParamOne'=>time()
+]);
 //模拟curl执行 timeout
 //$mode->func();
 sleep(1);
-$caller->endCall($caller::STATUS_FAIL,'xxxx超时');
+$point->endPoint($point::STATUS_FAIL,[
+    'curlResult'=>null,
+    'msg'=>'超时'
+]);
 
 echo $tracker->toString();
 ```
