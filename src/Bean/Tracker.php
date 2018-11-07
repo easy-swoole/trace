@@ -81,7 +81,7 @@ class Tracker
     /**
      * 设置一个调用点
      */
-    function setPoint(string $pointName, array $pointArgs = [], $pointCategory = 'default'): TrackerPoint
+    function setPoint(string $pointName, array $pointArgs = null, $pointCategory = 'default'): TrackerPoint
     {
         $t = new TrackerPoint($pointName, $pointArgs, $pointCategory);
         $this->pointStackMap[$pointName] = $t;
