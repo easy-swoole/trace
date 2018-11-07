@@ -116,8 +116,11 @@ class Tracker
         if ($category) {
             $msg = "Attribute:\n\t" . json_encode($this->attribute, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . "\n";
             $list = [];
+            // 支持传入数组获取多个分类
             foreach ($this->pointStack as $item) {
-                if ($item->getCategory() == $category) {
+                if (is_array($category) && in_array($item->getCategory(), $category)) {
+                    array_push($list, $item);
+                } else if ($item->getCategory() == $category) {
                     array_push($list, $item);
                 }
             }
