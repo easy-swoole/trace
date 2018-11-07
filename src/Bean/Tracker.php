@@ -114,7 +114,10 @@ class Tracker
     function toString($category = null)
     {
         if ($category) {
-            $msg = "Attribute:\n\t" . json_encode($this->attribute, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . "\n";
+            $msg = '';
+            foreach ($this->attribute as $key => $value) {
+                $msg .= "Attribute@{$key}:\n{$value}\n";
+            }
             $list = [];
             // 支持传入数组获取多个分类
             foreach ($this->pointStack as $item) {
