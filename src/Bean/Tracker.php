@@ -32,17 +32,9 @@ class Tracker
      * @param mixed $val
      * @return Tracker
      */
-    function addAttribute($key, $val = null): Tracker
+    function addAttribute($key, string $val = null): Tracker
     {
-        if (is_array($key)) {
-            if (empty($this->pointStack)) {
-                $this->attribute = $key;
-            } elseif (!empty($key)) {
-                $this->attribute = array_merge($this->attribute, $key);
-            }
-        } else {
-            $this->attribute[$key] = $val;
-        }
+        $this->attribute[$key] = $val;
         return $this;
     }
 
@@ -106,9 +98,9 @@ class Tracker
     function __toString()
     {
         // TODO: Implement __toString() method.
-        $msg = "TrackerToken:{$this->trackerToken}\nAttribute:\n";
+        $msg = "TrackerToken:{$this->trackerToken}\n";
         foreach ($this->attribute as $key => $value) {
-            $msg .= "\t{$key}:{$value}\n";
+            $msg .= "Attribute@{$key}:\n{$value}\n";
         }
         $msg .= $this->stackToString($this->pointStack);
         return $msg;
