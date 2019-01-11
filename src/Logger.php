@@ -9,11 +9,10 @@
 namespace EasySwoole\Trace;
 
 
-use EasySwoole\Trace\AbstractInterface\LoggerWriterInterface;
+use EasySwoole\Trace\AbstractInterface\LoggerInterface;
 
-class Logger
+class Logger implements LoggerInterface
 {
-    private $loggerWriter;
     private $logDir;
 
     function __construct(string $logDir = null)
@@ -24,27 +23,29 @@ class Logger
         $this->logDir = $logDir;
     }
 
-    function setLoggerWriter(LoggerWriterInterface $loggerWriter):void
+    public function log(string $str, $logCategory,int $timestamp = null)
     {
-        $this->loggerWriter = $loggerWriter;
-    }
-
-    public function log(string $str,$category = 'default')
-    {
-        if($this->loggerWriter instanceof LoggerWriterInterface){
-            $this->loggerWriter->writeLog($str,$category,time());
-        }else{
-            $str = date("y-m-d H:i:s").":{$str}\n";
-            $filePrefix = $category."_".date('ym');
-            $filePath = $this->logDir."/{$filePrefix}.log";
-            file_put_contents($filePath,$str,FILE_APPEND|LOCK_EX);
+        // TODO: Implement log() method.
+        if($timestamp == null){
+            $timestamp = time();
         }
+        $date = date('Y-m-d h:i:s',$timestamp);
+        $filePrefix = $logCategory.'-'.date('Y-m-d',$timestamp);
+        $filePath = $this->logDir."/{$filePrefix}.log";
+        file_put_contents($filePath,"[$date][{$logCategory}]{$str}\n",FILE_APPEND|LOCK_EX);
     }
 
-    public function console(string $str,$saveLog = 1){
-        echo $str . "\n";
+    public function console(string $str, $category = null, $saveLog = true)
+    {
+        // TODO: Implement console() method.
+        if(empty($category)){
+            $category = 'console';
+        }
+        $time = time();
+        $date = date('Y-m-d h:i:s',$time);
+        echo "[{$date}][{$category}]{$str}\n";
         if($saveLog){
-            $this->log($str,'console');
+            $this->log($str,$category,$time);
         }
     }
 }

@@ -9,24 +9,25 @@
 namespace EasySwoole\Trace;
 
 
+use EasySwoole\Trace\AbstractInterface\LoggerInterface;
 use EasySwoole\Trace\AbstractInterface\TriggerInterface;
+use EasySwoole\Trace\Bean\Error;
 use EasySwoole\Trace\Bean\Location;
-use EasySwoole\Trace\DefaultHandler\TriggerHandler;
 
-class Trigger
+class Trigger implements TriggerInterface
 {
-    private $handler = null;
+    protected $logger;
+    protected $displayError;
 
-    function __construct(TriggerInterface $trigger = null)
+    function __construct(LoggerInterface $logger,$displayError = true)
     {
-        if(!$trigger instanceof TriggerInterface){
-            $trigger = new TriggerHandler();
-        }
-        $this->handler = $trigger;
+        $this->logger = $logger;
+        $this->displayError = $displayError;
     }
 
-    public function error($msg,Location $location = null)
+    public function error($msg, int $errorCode = E_USER_ERROR, Location $location = null)
     {
+        // TODO: Implement error() method.
         if($location == null){
             $location = new Location();
             $debugTrace = debug_backtrace();
@@ -34,11 +35,21 @@ class Trigger
             $location->setLine($caller['line']);
             $location->setFile($caller['file']);
         }
-        $this->handler->error($msg,$location);
+        $error = Error::mapErrorCode($errorCode);
+        $msg = "[{$msg}][file:{$location->getFile()}][line:{$location->getLine()}]";
+        $this->logger->log($msg,$error->getErrorType());
+        if($this->displayError){
+            $this->logger->console($msg,$error->getErrorType(),false);
+        }
     }
 
     public function throwable(\Throwable $throwable)
     {
-        $this->handler->throwable($throwable);
+        // TODO: Implement throwable() method.
+        $msg = "[{$throwable->getMessage()}][file:{$throwable->getFile()}][line:{$throwable->getLine()}]";
+        $this->logger->log($msg,'Exception');
+        if($this->displayError){
+            $this->logger->console($msg,'Exception',false);
+        }
     }
 }
