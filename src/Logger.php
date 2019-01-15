@@ -37,12 +37,9 @@ class Logger implements LoggerInterface
         return $str;
     }
 
-    public function console(string $str, $category = null, $saveLog = true):?string
+    public function console(string $str, $category = 'console', $saveLog = true):?string
     {
         // TODO: Implement console() method.
-        if(empty($category)){
-            $category = 'console';
-        }
         $time = time();
         $date = date('Y-m-d h:i:s',$time);
         $final = "[{$date}][{$category}]{$str}";
