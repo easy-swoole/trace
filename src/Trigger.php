@@ -46,7 +46,7 @@ class Trigger implements TriggerInterface
     public function throwable(\Throwable $throwable)
     {
         // TODO: Implement throwable() method.
-        $msg = "[file:{$throwable->getFile()}][line:{$throwable->getLine()}]{{$throwable->getMessage()}}";
+        $msg = "[file:{$throwable->getFile()}][line:{$throwable->getLine()}]{$throwable->getMessage()}";
         $this->logger->log($msg,'Exception');
         if($this->displayError){
             $this->logger->console($msg,'Exception',false);
