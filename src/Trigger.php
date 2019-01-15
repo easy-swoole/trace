@@ -36,7 +36,7 @@ class Trigger implements TriggerInterface
             $location->setFile($caller['file']);
         }
         $error = Error::mapErrorCode($errorCode);
-        $msg = "[{$msg}][file:{$location->getFile()}][line:{$location->getLine()}]";
+        $msg = "[file:{$location->getFile()}][line:{$location->getLine()}]{$msg}";
         $this->logger->log($msg,$error->getErrorType());
         if($this->displayError){
             $this->logger->console($msg,$error->getErrorType(),false);
@@ -46,7 +46,7 @@ class Trigger implements TriggerInterface
     public function throwable(\Throwable $throwable)
     {
         // TODO: Implement throwable() method.
-        $msg = "[{$throwable->getMessage()}][file:{$throwable->getFile()}][line:{$throwable->getLine()}]";
+        $msg = "[file:{$throwable->getFile()}][line:{$throwable->getLine()}]{{$throwable->getMessage()}}";
         $this->logger->log($msg,'Exception');
         if($this->displayError){
             $this->logger->console($msg,'Exception',false);
