@@ -11,6 +11,6 @@ namespace EasySwoole\Trace\AbstractInterface;
 
 interface LoggerInterface
 {
-    public function log(string $str,$logCategory,int $timestamp = null);
-    public function console(string $str,$category = null,$saveLog = true);
+    public function log(string $str,$logCategory,int $timestamp = null):?string ;
+    public function console(string $str,$category = null,$saveLog = true):?string ;
 }

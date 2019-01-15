@@ -23,7 +23,7 @@ class Logger implements LoggerInterface
         $this->logDir = $logDir;
     }
 
-    public function log(string $str, $logCategory,int $timestamp = null)
+    public function log(string $str, $logCategory,int $timestamp = null):?string
     {
         // TODO: Implement log() method.
         if($timestamp == null){
@@ -32,10 +32,12 @@ class Logger implements LoggerInterface
         $date = date('Y-m-d h:i:s',$timestamp);
         $filePrefix = $logCategory.'-'.date('Y-m-d',$timestamp);
         $filePath = $this->logDir."/{$filePrefix}.log";
-        file_put_contents($filePath,"[$date][{$logCategory}]{$str}\n",FILE_APPEND|LOCK_EX);
+        $str = "[$date][{$logCategory}]{$str}";
+        file_put_contents($filePath,"{$str}\n",FILE_APPEND|LOCK_EX);
+        return $str;
     }
 
-    public function console(string $str, $category = null, $saveLog = true)
+    public function console(string $str, $category = null, $saveLog = true):?string
     {
         // TODO: Implement console() method.
         if(empty($category)){
@@ -43,9 +45,11 @@ class Logger implements LoggerInterface
         }
         $time = time();
         $date = date('Y-m-d h:i:s',$time);
-        echo "[{$date}][{$category}]{$str}\n";
+        $str = "[{$date}][{$category}]{$str}";
         if($saveLog){
             $this->log($str,$category,$time);
         }
+        echo $str."\n";
+        return $str;
     }
 }
