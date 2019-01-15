@@ -23,7 +23,7 @@ class Logger implements LoggerInterface
         $this->logDir = $logDir;
     }
 
-    public function log(string $str, $logCategory,int $timestamp = null):?string
+    public function log(string $str, $logCategory = 'default',int $timestamp = null):?string
     {
         // TODO: Implement log() method.
         if($timestamp == null){
@@ -45,11 +45,11 @@ class Logger implements LoggerInterface
         }
         $time = time();
         $date = date('Y-m-d h:i:s',$time);
-        $str = "[{$date}][{$category}]{$str}";
+        $final = "[{$date}][{$category}]{$str}";
         if($saveLog){
             $this->log($str,$category,$time);
         }
-        echo $str."\n";
-        return $str;
+        echo $final."\n";
+        return $final;
     }
 }
