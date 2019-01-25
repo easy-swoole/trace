@@ -30,7 +30,7 @@ class Logger implements LoggerInterface
             $timestamp = time();
         }
         $date = date('Y-m-d h:i:s',$timestamp);
-        $filePrefix = $logCategory.'—'.date('Y-m',$timestamp);
+        $filePrefix = $logCategory.'-'.date('Y-m',$timestamp);
         $filePath = $this->logDir."/{$filePrefix}.log";
         $str = "[$date][{$logCategory}]{$str}";
         file_put_contents($filePath,"{$str}\n",FILE_APPEND|LOCK_EX);
