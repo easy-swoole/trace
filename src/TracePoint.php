@@ -356,7 +356,8 @@ class TracePoint implements JsonSerializable
         return true;
     }
 
-    protected static function restoreFromSpanBean(
+    /** @internal Used by Utility when rebuilding a persisted trace. */
+    public static function restoreFromSpanBean(
         SpanBean $span,
         Clock $clock,
         WallClock $wallClock,
@@ -391,7 +392,8 @@ class TracePoint implements JsonSerializable
         $this->error = $span->error;
     }
 
-    protected function attachRestoredChild(self $child): void
+    /** @internal Used by Utility when rebuilding a persisted trace. */
+    public function attachRestoredChild(self $child): void
     {
         if ($child->parentSpanId !== $this->spanId) {
             throw new LogicException(
