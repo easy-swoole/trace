@@ -6,6 +6,7 @@ namespace EasySwoole\Trace;
 
 use Closure;
 use EasySwoole\Trace\Bean\SpanBean;
+use InvalidArgumentException;
 use JsonSerializable;
 use LogicException;
 use Throwable;
@@ -28,12 +29,12 @@ class TracePoint implements JsonSerializable
     private array $children = [];
 
     private ?TracePoint $nextPoint = null;
-    private bool $hasPerist = false;
+    private bool $persisted = false;
 
     /** @var null|Closure(TracePoint): void */
     private ?Closure $autoPersistCallback = null;
 
-    public function __construct(
+    protected function __construct(
         private readonly string $name,
         private readonly string $type,
         private readonly Clock $clock,
@@ -47,6 +48,12 @@ class TracePoint implements JsonSerializable
     ) {
         if (!in_array($type, [self::TYPE_SERIAL, self::TYPE_PARALLEL], true)) {
             throw new LogicException("Unknown trace point type: {$type}");
+        }
+
+        self::assertIdentifier($traceId, 32, 'trace ID');
+        self::assertIdentifier($spanId, 16, 'span ID');
+        if ($parentSpanId !== null) {
+            self::assertIdentifier($parentSpanId, 16, 'parent span ID');
         }
     }
 
@@ -65,7 +72,7 @@ class TracePoint implements JsonSerializable
     }
 
     /** @param array<string, mixed> $params */
-    public function addParallelPoint(?string $name = null, array $params = []): self
+    public function parallel(?string $name = null, array $params = []): self
     {
         return $this->addChild($name, self::TYPE_PARALLEL, $params);
     }
@@ -145,19 +152,14 @@ class TracePoint implements JsonSerializable
         return $this->parentSpanId;
     }
 
-    public function hasPerist(): bool
+    public function isPersisted(): bool
     {
-        return $this->hasPerist;
-    }
-
-    public function hasPersisted(): bool
-    {
-        return $this->hasPerist;
+        return $this->persisted;
     }
 
     public function markPersisted(bool $withChildren = true): self
     {
-        $this->hasPerist = true;
+        $this->persisted = true;
 
         if ($withChildren) {
             foreach ($this->children as $child) {
@@ -189,6 +191,7 @@ class TracePoint implements JsonSerializable
     public function setParams(array $params): self
     {
         $this->params = $params;
+        $this->persisted = false;
 
         return $this;
     }
@@ -201,28 +204,13 @@ class TracePoint implements JsonSerializable
 
     public function durationMs(): float
     {
-        $end = $this->endedAt ?? $this->clock->now();
-
-        return ($end - $this->startedAt) / 1_000_000;
+        return $this->durationUs() / 1_000;
     }
 
     /** @return list<TracePoint> */
     public function children(): array
     {
         return $this->children;
-    }
-
-    /**
-     * Returns this point and all descendants as rows suitable for batch storage.
-     *
-     * @return list<array<string, mixed>>
-     */
-    public function spans(bool $onlySelf = false): array
-    {
-        return array_map(
-            static fn (SpanBean $span): array => $span->toArray(),
-            $this->spanBeans($onlySelf),
-        );
     }
 
     public function toSpanBean(): SpanBean
@@ -243,7 +231,7 @@ class TracePoint implements JsonSerializable
     }
 
     /** @return list<SpanBean> */
-    public function spanBeans(bool $onlySelf = false): array
+    public function spans(bool $onlySelf = false): array
     {
         $spans = [$this->toSpanBean()];
 
@@ -252,7 +240,7 @@ class TracePoint implements JsonSerializable
         }
 
         foreach ($this->children as $child) {
-            array_push($spans, ...$child->spanBeans());
+            array_push($spans, ...$child->spans());
         }
 
         return $spans;
@@ -262,18 +250,8 @@ class TracePoint implements JsonSerializable
     public function toArray(): array
     {
         return [
-            'trace_id' => $this->traceId,
-            'span_id' => $this->spanId,
-            'parent_span_id' => $this->parentSpanId,
-            'name' => $this->name,
-            'type' => $this->type,
-            'status' => $this->status->value,
-            'started_at_unix_us' => $this->startedAtUnixUs,
-            'ended_at_unix_us' => $this->endedAtUnixUs,
-            'duration_us' => $this->durationUs(),
+            ...$this->toSpanBean()->toArray(),
             'duration_ms' => round($this->durationMs(), 3),
-            'params' => $this->params,
-            'error' => $this->error,
             'children' => array_map(
                 static fn (TracePoint $child): array => $child->toArray(),
                 $this->children,
@@ -331,6 +309,7 @@ class TracePoint implements JsonSerializable
         $this->endedAt = max($endedAt, $this->startedAt);
         $this->endedAtUnixUs = max($endedAtUnixUs, $this->startedAtUnixUs);
         $this->status = $status;
+        $this->persisted = false;
 
         if ($error !== null) {
             $this->error = sprintf('%s: %s', $error::class, $error->getMessage());
@@ -346,13 +325,8 @@ class TracePoint implements JsonSerializable
 
     public function __destruct()
     {
-        if ($this->hasPerist || $this->autoPersistCallback === null) {
-            return;
-        }
-
         try {
-            ($this->autoPersistCallback)($this);
-            $this->markPersisted(withChildren: false);
+            $this->persistIfNeeded();
         } catch (Throwable $error) {
             trigger_error(
                 sprintf(
@@ -363,6 +337,23 @@ class TracePoint implements JsonSerializable
                 E_USER_WARNING,
             );
         }
+    }
+
+    /**
+     * Runs the configured persistence fallback once for this point.
+     *
+     * @return bool Whether the callback was invoked.
+     */
+    public function persistIfNeeded(): bool
+    {
+        if ($this->persisted || $this->autoPersistCallback === null) {
+            return false;
+        }
+
+        ($this->autoPersistCallback)($this);
+        $this->markPersisted(withChildren: false);
+
+        return true;
     }
 
     protected static function restoreFromSpanBean(
@@ -419,6 +410,15 @@ class TracePoint implements JsonSerializable
         }
 
         $this->children[] = $child;
+    }
+
+    private static function assertIdentifier(string $id, int $length, string $name): void
+    {
+        if (!preg_match('/^[0-9a-f]{' . $length . '}$/', $id) || trim($id, '0') === '') {
+            throw new InvalidArgumentException(
+                sprintf('The %s must be a non-zero, %d-character lowercase hexadecimal string', $name, $length),
+            );
+        }
     }
 
 }

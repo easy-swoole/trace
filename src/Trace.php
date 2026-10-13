@@ -45,11 +45,6 @@ final class Trace extends TracePoint
 
         $traceId ??= $idGenerator->traceId();
 
-        self::assertIdentifier($traceId, 32, 'trace ID');
-        if ($parentSpanId !== null) {
-            self::assertIdentifier($parentSpanId, 16, 'parent span ID');
-        }
-
         parent::__construct(
             name: $name,
             type: self::TYPE_SERIAL,
@@ -127,8 +122,13 @@ final class Trace extends TracePoint
         foreach ($childrenByParent as &$children) {
             usort(
                 $children,
-                static fn (SpanBean $left, SpanBean $right): int =>
-                    $left->startedAtUnixUs <=> $right->startedAtUnixUs,
+                static fn (SpanBean $left, SpanBean $right): int => [
+                    $left->startedAtUnixUs,
+                    $left->spanId,
+                ] <=> [
+                    $right->startedAtUnixUs,
+                    $right->spanId,
+                ],
             );
         }
         unset($children);
@@ -174,14 +174,5 @@ final class Trace extends TracePoint
         $trace->markPersisted();
 
         return $trace;
-    }
-
-    private static function assertIdentifier(string $id, int $length, string $name): void
-    {
-        if (!preg_match('/^[0-9a-f]{' . $length . '}$/', $id) || trim($id, '0') === '') {
-            throw new \InvalidArgumentException(
-                sprintf('The %s must be a non-zero, %d-character lowercase hexadecimal string', $name, $length),
-            );
-        }
     }
 }
