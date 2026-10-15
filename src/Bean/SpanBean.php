@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace EasySwoole\Trace\Bean;
 
 use EasySwoole\Trace\TraceStatus;
+use EasySwoole\Trace\EndTrigger;
 use InvalidArgumentException;
 use JsonSerializable;
 use JsonException;
@@ -24,6 +25,7 @@ final class SpanBean implements JsonSerializable
         public readonly int $durationUs,
         public readonly array $params,
         public readonly ?string $error,
+        public readonly ?EndTrigger $endedBy = null,
     ) {
         self::assertIdentifier($traceId, 32, 'trace_id');
         self::assertIdentifier($spanId, 16, 'span_id');
@@ -89,6 +91,16 @@ final class SpanBean implements JsonSerializable
             throw new InvalidArgumentException('spanBean params must be an array or JSON object');
         }
 
+        $endedBy = null;
+        if (isset($row['ended_by'])) {
+            $endedBy = is_string($row['ended_by'])
+                ? EndTrigger::tryFrom($row['ended_by'])
+                : null;
+            if ($endedBy === null) {
+                throw new InvalidArgumentException('invalid end trigger');
+            }
+        }
+
         return new self(
             traceId: self::stringValue($row, 'trace_id'),
             spanId: self::stringValue($row, 'span_id'),
@@ -103,6 +115,7 @@ final class SpanBean implements JsonSerializable
             error: array_key_exists('error', $row)
                 ? self::nullableStringValue($row, 'error')
                 : null,
+            endedBy: $endedBy,
         );
     }
 
@@ -121,6 +134,7 @@ final class SpanBean implements JsonSerializable
             'duration_us' => $this->durationUs,
             'params' => $this->params,
             'error' => $this->error,
+            'ended_by' => $this->endedBy?->value,
         ];
     }
 

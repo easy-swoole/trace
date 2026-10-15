@@ -500,6 +500,7 @@ $current = $point->spans(onlySelf: true);
 | `durationUs` | `duration_us` | `int` | 单调时钟耗时 |
 | `params` | `params` | `array` | 原始参数，入库时可编码为 JSON |
 | `error` | `error` | `?string` | 异常类名与错误消息 |
+| `endedBy` | `ended_by` | `?EndTrigger` | 节点结束来源；运行中为 `null` |
 
 转换成数据库字段数组：
 
@@ -556,7 +557,7 @@ $trace->markPersisted();
 $latePoint = $asyncScope->next('late-coroutine');
 ```
 
-如果节点创建于 Swoole 协程中，会自动为该节点注册一次 `Coroutine::defer()`。协程结束时如果节点仍未持久化，会调用回调并传入当前节点。非协程环境不会注册 `defer`，节点析构仍会执行相同的兜底逻辑。
+如果节点创建于 Swoole 协程中，会自动为该节点注册一次 `Coroutine::defer()`。协程结束时如果节点尚未结束，会自动按 `abandoned` 状态收口，然后执行持久化回调。非协程环境不会注册 `defer`，节点析构仍会执行相同的兜底逻辑。
 
 协程检测不要求项目必须安装 Swoole 扩展；没有安装扩展或当前不在协程中时会直接跳过。`defer` 使用弱引用关联节点，不会因为兜底回调而额外延长节点生命周期。
 
@@ -571,6 +572,25 @@ $point->persistIfNeeded();
 ```php
 $didPersist = $point->persistIfNeeded();
 ```
+
+每个已结束节点都会在 `SpanBean::endedBy` 和数据库字段 `ended_by` 中记录结束来源：
+
+- `manual`：显式调用 `endCall()`、`fail()` 或 `timeout()`。
+- `coroutine_defer`：节点未正常结束，由 Swoole 协程 `defer` 自动收口。
+- `destructor`：节点未正常结束，由对象析构自动收口。
+- `parent`：父节点结束时，当前节点仍未结束而被递归收口。
+
+因此可以直接查询没有规范闭合的节点：
+
+```sql
+SELECT *
+FROM trace_spans
+WHERE ended_by IN ('coroutine_defer', 'destructor', 'parent');
+```
+
+运行中的节点 `ended_by` 为 `null`。`defer` 或析构不会改写已经结束节点的状态、时间和 `ended_by`；它们只会为仍未结束的节点兜底收口。
+
+`defer` 和析构只收口当前节点，不会递归修改仍被其他代码持有的子节点。只有显式结束父节点时，才会把其尚未结束的后代节点以 `parent` 来源递归收口。
 
 已经标记入库的节点，在后续执行以下操作后会重新变成未持久化状态：
 
@@ -592,7 +612,7 @@ $didPersist = $point->persistIfNeeded();
 - 回调应只写当前节点，使用 `spans(onlySelf: true)`，避免重复写入整棵树。
 - 不要让回调强引用当前 Trace，否则可能形成引用环并推迟析构。
 - 数据库应以 `(trace_id, span_id)` 建立唯一约束，并使用 upsert 支持节点状态补写。
-- `defer` 执行时不会自动结束仍在运行的节点，只会按节点当时的状态补写。应在业务逻辑中先调用 `endCall()`、`fail()` 或 `timeout()`。
+- `defer` 和析构会把仍在运行的节点标记为 `abandoned`，便于追踪没有正常闭合的调用。
 - 自动补写不允许绕过节点生命周期：父节点一旦 `endCall()`，就不能再创建后继或并行节点。
 - 如果内部协程需要晚于外层入库继续建链，应保持对应的协程范围节点为运行状态，只先入库和 `markPersisted()`，待协程完成后再结束节点。
 

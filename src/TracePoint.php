@@ -31,6 +31,7 @@ class TracePoint implements JsonSerializable
 
     private ?TracePoint $nextPoint = null;
     private bool $persisted = false;
+    private ?EndTrigger $endedBy = null;
 
     /** @var null|Closure(TracePoint): void */
     private ?Closure $autoPersistCallback = null;
@@ -95,6 +96,7 @@ class TracePoint implements JsonSerializable
             $this->clock->now(),
             $this->wallClock->nowUnixUs(),
             $status,
+            EndTrigger::Manual,
             $error,
         );
 
@@ -117,6 +119,7 @@ class TracePoint implements JsonSerializable
             $this->clock->now(),
             $this->wallClock->nowUnixUs(),
             TraceStatus::Timeout,
+            EndTrigger::Manual,
         );
 
         return $this;
@@ -233,6 +236,7 @@ class TracePoint implements JsonSerializable
             durationUs: $this->durationUs(),
             params: $this->params,
             error: $this->error,
+            endedBy: $this->endedBy,
         );
     }
 
@@ -305,17 +309,27 @@ class TracePoint implements JsonSerializable
         int $endedAt,
         int $endedAtUnixUs,
         TraceStatus $status,
+        EndTrigger $endedBy,
         ?Throwable $error = null,
+        bool $withChildren = true,
     ): void {
-        foreach ($this->children as $child) {
-            if (!$child->isEnded()) {
-                $child->finishAt($endedAt, $endedAtUnixUs, TraceStatus::Abandoned);
+        if ($withChildren) {
+            foreach ($this->children as $child) {
+                if (!$child->isEnded()) {
+                    $child->finishAt(
+                        $endedAt,
+                        $endedAtUnixUs,
+                        TraceStatus::Abandoned,
+                        EndTrigger::Parent,
+                    );
+                }
             }
         }
 
         $this->endedAt = max($endedAt, $this->startedAt);
         $this->endedAtUnixUs = max($endedAtUnixUs, $this->startedAtUnixUs);
         $this->status = $status;
+        $this->endedBy = $endedBy;
         $this->persisted = false;
 
         if ($error !== null) {
@@ -332,7 +346,7 @@ class TracePoint implements JsonSerializable
 
     public function __destruct()
     {
-        $this->persistSafely();
+        $this->finishAndPersistSafely(EndTrigger::Destructor);
     }
 
     /**
@@ -362,15 +376,25 @@ class TracePoint implements JsonSerializable
         $reference = WeakReference::create($this);
         $this->coroutineDeferRegistered = $this->coroutineDefer->register(
             static function () use ($reference): void {
-                $reference->get()?->persistSafely();
+                $reference->get()?->finishAndPersistSafely(EndTrigger::CoroutineDefer);
             },
         );
     }
 
     /** 自动持久化失败时仅产生警告，避免影响析构或协程清理流程。 */
-    private function persistSafely(): void
+    private function finishAndPersistSafely(EndTrigger $trigger): void
     {
         try {
+            if (!$this->isEnded()) {
+                $this->finishAt(
+                    $this->clock->now(),
+                    $this->wallClock->nowUnixUs(),
+                    TraceStatus::Abandoned,
+                    $trigger,
+                    withChildren: false,
+                );
+            }
+
             $this->persistIfNeeded();
         } catch (Throwable $error) {
             trigger_error(
@@ -419,6 +443,7 @@ class TracePoint implements JsonSerializable
             : $startedAt + ($span->durationUs * 1_000);
         $this->params = $span->params;
         $this->error = $span->error;
+        $this->endedBy = $span->endedBy;
     }
 
     /** @internal 仅供 Utility 重建已持久化调用链时使用。 */
