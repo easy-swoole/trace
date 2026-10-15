@@ -6,6 +6,6 @@ namespace EasySwoole\Trace;
 
 interface WallClock
 {
-    /** Returns Unix time in microseconds. */
+    /** 返回 Unix 微秒时间戳。 */
     public function nowUnixUs(): int;
 }

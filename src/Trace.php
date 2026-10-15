@@ -18,10 +18,12 @@ final class Trace extends TracePoint
         ?WallClock $wallClock = null,
         array $params = [],
         ?SpanBean $restoredSpan = null,
+        ?CoroutineDefer $coroutineDefer = null,
     ) {
         $clock ??= new HrtimeClock();
         $wallClock ??= new SystemWallClock();
         $idGenerator ??= new RandomIdGenerator();
+        $coroutineDefer ??= new SwooleCoroutineDefer();
 
         if ($restoredSpan !== null) {
             $startedAt = $clock->now() - ($restoredSpan->durationUs * 1_000);
@@ -36,6 +38,7 @@ final class Trace extends TracePoint
                 parentSpanId: $restoredSpan->parentSpanId,
                 startedAt: $startedAt,
                 startedAtUnixUs: $restoredSpan->startedAtUnixUs,
+                coroutineDefer: $coroutineDefer,
             );
             $this->restoreState($restoredSpan, $startedAt);
 
@@ -55,6 +58,7 @@ final class Trace extends TracePoint
             parentSpanId: $parentSpanId,
             startedAt: $clock->now(),
             startedAtUnixUs: $wallClock->nowUnixUs(),
+            coroutineDefer: $coroutineDefer,
         );
 
         $this->setParams($params);

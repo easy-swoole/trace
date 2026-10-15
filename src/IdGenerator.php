@@ -6,9 +6,9 @@ namespace EasySwoole\Trace;
 
 interface IdGenerator
 {
-    /** Returns a W3C-compatible 32-character lowercase hexadecimal trace ID. */
+    /** 返回符合 W3C 格式的 32 位小写十六进制 Trace ID。 */
     public function traceId(): string;
 
-    /** Returns a W3C-compatible 16-character lowercase hexadecimal span ID. */
+    /** 返回符合 W3C 格式的 16 位小写十六进制 Span ID。 */
     public function spanId(): string;
 }

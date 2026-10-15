@@ -32,21 +32,21 @@ final class SpanBean implements JsonSerializable
         }
 
         if (!in_array($type, ['serial', 'parallel'], true)) {
-            throw new InvalidArgumentException("Unknown span type '{$type}'");
+            throw new InvalidArgumentException("unknown span type '{$type}'");
         }
 
         if ($startedAtUnixUs < 0 || $durationUs < 0) {
-            throw new InvalidArgumentException('Span timestamps and duration cannot be negative');
+            throw new InvalidArgumentException('span timestamps and duration cannot be negative');
         }
 
         if ($endedAtUnixUs !== null && $endedAtUnixUs < $startedAtUnixUs) {
-            throw new InvalidArgumentException('Span end time cannot be earlier than its start time');
+            throw new InvalidArgumentException('span end time cannot be earlier than its start time');
         }
     }
 
     /**
-     * Creates a bean from a database row using snake_case column names.
-     * The params column may contain either an array or a JSON string.
+     * 使用 snake_case 数据库字段创建 Bean。
+     * params 字段可以是数组或 JSON 字符串。
      *
      * @param array<string, mixed> $row
      */
@@ -66,7 +66,7 @@ final class SpanBean implements JsonSerializable
 
         foreach ($required as $field) {
             if (!array_key_exists($field, $row)) {
-                throw new InvalidArgumentException("Missing SpanBean field '{$field}'");
+                throw new InvalidArgumentException("missing SpanBean field '{$field}'");
             }
         }
 
@@ -74,7 +74,7 @@ final class SpanBean implements JsonSerializable
             ? TraceStatus::tryFrom($row['status'])
             : null;
         if ($status === null) {
-            throw new InvalidArgumentException('Invalid SpanBean status');
+            throw new InvalidArgumentException('invalid SpanBean status');
         }
 
         $params = $row['params'] ?? [];
@@ -82,11 +82,11 @@ final class SpanBean implements JsonSerializable
             try {
                 $params = json_decode($params, true, flags: JSON_THROW_ON_ERROR);
             } catch (JsonException $error) {
-                throw new InvalidArgumentException('Invalid SpanBean params JSON', previous: $error);
+                throw new InvalidArgumentException('invalid SpanBean params JSON', previous: $error);
             }
         }
         if (!is_array($params)) {
-            throw new InvalidArgumentException('SpanBean params must be an array or JSON object');
+            throw new InvalidArgumentException('spanBean params must be an array or JSON object');
         }
 
         return new self(
@@ -143,7 +143,7 @@ final class SpanBean implements JsonSerializable
     private static function stringValue(array $row, string $field): string
     {
         if (!is_string($row[$field])) {
-            throw new InvalidArgumentException("SpanBean field '{$field}' must be a string");
+            throw new InvalidArgumentException("spanBean field '{$field}' must be a string");
         }
 
         return $row[$field];
@@ -171,7 +171,7 @@ final class SpanBean implements JsonSerializable
             return (int) $value;
         }
 
-        throw new InvalidArgumentException("SpanBean field '{$field}' must be an integer");
+        throw new InvalidArgumentException("spanBean field '{$field}' must be an integer");
     }
 
     /** @param array<string, mixed> $row */

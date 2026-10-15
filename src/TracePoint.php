@@ -10,6 +10,7 @@ use InvalidArgumentException;
 use JsonSerializable;
 use LogicException;
 use Throwable;
+use WeakReference;
 
 class TracePoint implements JsonSerializable
 {
@@ -33,6 +34,7 @@ class TracePoint implements JsonSerializable
 
     /** @var null|Closure(TracePoint): void */
     private ?Closure $autoPersistCallback = null;
+    private bool $coroutineDeferRegistered = false;
 
     protected function __construct(
         private readonly string $name,
@@ -45,9 +47,10 @@ class TracePoint implements JsonSerializable
         private readonly ?string $parentSpanId,
         private readonly int $startedAt,
         private readonly int $startedAtUnixUs,
+        private readonly CoroutineDefer $coroutineDefer,
     ) {
         if (!in_array($type, [self::TYPE_SERIAL, self::TYPE_PARALLEL], true)) {
-            throw new LogicException("Unknown trace point type: {$type}");
+            throw new LogicException("unknown trace point type: {$type}");
         }
 
         self::assertIdentifier($traceId, 32, 'trace ID');
@@ -55,6 +58,8 @@ class TracePoint implements JsonSerializable
         if ($parentSpanId !== null) {
             self::assertIdentifier($parentSpanId, 16, 'parent span ID');
         }
+
+        $this->registerCoroutineDefer();
     }
 
     /** @param array<string, mixed> $params */
@@ -62,7 +67,7 @@ class TracePoint implements JsonSerializable
     {
         if ($this->nextPoint !== null) {
             throw new LogicException(
-                "Trace point '{$this->name}' already has a next point",
+                "trace point '{$this->name}' already has a next point",
             );
         }
 
@@ -171,14 +176,15 @@ class TracePoint implements JsonSerializable
     }
 
     /**
-     * Registers a fallback called at destruction when this point was not persisted.
-     * The callback is propagated to existing and future children.
+     * 注册自动持久化兜底回调；节点析构且尚未持久化时执行。
+     * 回调会传播给已经存在以及后续创建的所有子节点。
      *
      * @param callable(TracePoint): void $callback
      */
     public function setAutoPersist(callable $callback): self
     {
         $this->autoPersistCallback = Closure::fromCallable($callback);
+        $this->registerCoroutineDefer();
 
         foreach ($this->children as $child) {
             $child->setAutoPersist($this->autoPersistCallback);
@@ -269,7 +275,7 @@ class TracePoint implements JsonSerializable
     private function addChild(?string $name, string $type, array $params): self
     {
         if ($this->isEnded()) {
-            throw new LogicException("Cannot add a child to ended trace point '{$this->name}'");
+            throw new LogicException("cannot add a child to ended trace point '{$this->name}'");
         }
 
         $number = $this->nextChildNumber++;
@@ -284,6 +290,7 @@ class TracePoint implements JsonSerializable
             $this->spanId,
             $this->clock->now(),
             $this->wallClock->nowUnixUs(),
+            $this->coroutineDefer,
         );
         $child->setParams($params);
         if ($this->autoPersistCallback !== null) {
@@ -325,24 +332,13 @@ class TracePoint implements JsonSerializable
 
     public function __destruct()
     {
-        try {
-            $this->persistIfNeeded();
-        } catch (Throwable $error) {
-            trigger_error(
-                sprintf(
-                    "Auto-persist failed for trace point '%s': %s",
-                    $this->name,
-                    $error->getMessage(),
-                ),
-                E_USER_WARNING,
-            );
-        }
+        $this->persistSafely();
     }
 
     /**
-     * Runs the configured persistence fallback once for this point.
+     * 为当前节点执行一次已配置的持久化兜底回调。
      *
-     * @return bool Whether the callback was invoked.
+     * @return bool 本次是否执行了回调。
      */
     public function persistIfNeeded(): bool
     {
@@ -356,7 +352,39 @@ class TracePoint implements JsonSerializable
         return true;
     }
 
-    /** @internal Used by Utility when rebuilding a persisted trace. */
+    /** 在协程结束时增加一次自动持久化兜底。 */
+    private function registerCoroutineDefer(): void
+    {
+        if ($this->coroutineDeferRegistered) {
+            return;
+        }
+
+        $reference = WeakReference::create($this);
+        $this->coroutineDeferRegistered = $this->coroutineDefer->register(
+            static function () use ($reference): void {
+                $reference->get()?->persistSafely();
+            },
+        );
+    }
+
+    /** 自动持久化失败时仅产生警告，避免影响析构或协程清理流程。 */
+    private function persistSafely(): void
+    {
+        try {
+            $this->persistIfNeeded();
+        } catch (Throwable $error) {
+            trigger_error(
+                sprintf(
+                    "auto-persist failed for trace point '%s': %s",
+                    $this->name,
+                    $error->getMessage(),
+                ),
+                E_USER_WARNING,
+            );
+        }
+    }
+
+    /** @internal 仅供 Utility 重建已持久化调用链时使用。 */
     public static function restoreFromSpanBean(
         SpanBean $span,
         Clock $clock,
@@ -375,6 +403,7 @@ class TracePoint implements JsonSerializable
             parentSpanId: $span->parentSpanId,
             startedAt: $startedAt,
             startedAtUnixUs: $span->startedAtUnixUs,
+            coroutineDefer: new SwooleCoroutineDefer(),
         );
         $point->restoreState($span, $startedAt);
 
@@ -392,19 +421,19 @@ class TracePoint implements JsonSerializable
         $this->error = $span->error;
     }
 
-    /** @internal Used by Utility when rebuilding a persisted trace. */
+    /** @internal 仅供 Utility 重建已持久化调用链时使用。 */
     public function attachRestoredChild(self $child): void
     {
         if ($child->parentSpanId !== $this->spanId) {
             throw new LogicException(
-                "Span '{$child->spanId}' does not belong to parent '{$this->spanId}'",
+                "span '{$child->spanId}' does not belong to parent '{$this->spanId}'",
             );
         }
 
         if ($child->type === self::TYPE_SERIAL) {
             if ($this->nextPoint !== null) {
                 throw new LogicException(
-                    "Trace point '{$this->name}' has multiple restored next points",
+                    "trace point '{$this->name}' has multiple restored next points",
                 );
             }
 
@@ -418,7 +447,7 @@ class TracePoint implements JsonSerializable
     {
         if (!preg_match('/^[0-9a-f]{' . $length . '}$/', $id) || trim($id, '0') === '') {
             throw new InvalidArgumentException(
-                sprintf('The %s must be a non-zero, %d-character lowercase hexadecimal string', $name, $length),
+                sprintf('the %s must be a non-zero, %d-character lowercase hexadecimal string', $name, $length),
             );
         }
     }
